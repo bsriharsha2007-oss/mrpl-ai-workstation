@@ -21,6 +21,7 @@ import {
   useTasks,
 } from "@/hooks/use-queries";
 import { cn } from "@/lib/utils";
+import { classifyTask, SOVEREIGN_AGENTS, type Classification } from "@/services/agents";
 import type { ChatMessage } from "@/types";
 import { relativeTime } from "@/utils/format";
 import { motion } from "framer-motion";
@@ -68,6 +69,8 @@ export default function WorkstationPage() {
   const [attachments, setAttachments] = useState<string[]>([]);
   const [streaming, setStreaming] = useState<string | null>(null);
   const [selectedAgent, setSelectedAgent] = useState("Operations Copilot");
+  /** Task Classifier decision for the latest prompt. */
+  const [classification, setClassification] = useState<Classification | null>(null);
   const [elapsedMs, setElapsedMs] = useState<number | undefined>(undefined);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -130,11 +133,18 @@ export default function WorkstationPage() {
     }));
     setInput("");
 
+    // Task Classifier: every request is routed to exactly one sovereign agent
+    // before execution. The routed agent becomes active and the decision is
+    // surfaced subtly in the workspace header and activity center.
+    const routed = classifyTask(trimmed);
+    setClassification(routed);
+    setSelectedAgent(SOVEREIGN_AGENTS[routed.agent].name);
+
     const startedAt = Date.now();
     const response = await send.mutateAsync({
       conversationId,
       prompt: trimmed,
-      agent: selectedAgent,
+      agent: SOVEREIGN_AGENTS[routed.agent].name,
       attachmentName: attachments[0],
     });
     setElapsedMs(Date.now() - startedAt);
@@ -273,6 +283,12 @@ export default function WorkstationPage() {
               </p>
             </div>
             <div className="flex items-center gap-1.5">
+              {classification ? (
+                <Badge2 tone="info" icon={<Sparkles className="size-3" />}>
+                  Classifier → {SOVEREIGN_AGENTS[classification.agent].name} ·{" "}
+                  {Math.round(classification.confidence * 100)}%
+                </Badge2>
+              ) : null}
               <Badge2 tone={streaming !== null ? "warning" : "success"}>
                 {streaming !== null ? "Streaming" : "Ready"}
               </Badge2>
