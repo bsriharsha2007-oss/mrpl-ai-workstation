@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/sonner";
+import { Button } from "@/components/ui/button";
 import { RequireAuth } from "@/components/RequireAuth";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
@@ -123,6 +124,35 @@ class RootErrorBoundary extends React.Component<
                 {this.state.stack}
               </pre>
             ) : null}
+            <div className="mt-4 flex flex-col gap-2">
+              <Button
+                className="h-9 w-full cursor-pointer"
+                onClick={() => window.location.reload()}
+              >
+                Try again
+              </Button>
+              <Button
+                variant="outline"
+                className="h-9 w-full cursor-pointer"
+                onClick={() => {
+                  try {
+                    // Drop the persisted workstation session and any cached
+                    // Convex auth token so the next load starts clean.
+                    localStorage.removeItem("mrpl.workstation.session");
+                    for (const key of Object.keys(localStorage)) {
+                      if (key.toLowerCase().startsWith("convex")) {
+                        localStorage.removeItem(key);
+                      }
+                    }
+                  } catch {
+                    // storage unavailable — reload without cleanup
+                  }
+                  window.location.href = "/auth";
+                }}
+              >
+                Reset session &amp; sign in
+              </Button>
+            </div>
           </div>
         </div>
       );
